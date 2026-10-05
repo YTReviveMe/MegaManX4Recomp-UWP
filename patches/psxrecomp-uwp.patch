@@ -1,0 +1,395 @@
+diff --git a/runtime/src/autocompile.c b/runtime/src/autocompile.c
+index a9b2a79e..7bb8052c 100644
+--- a/runtime/src/autocompile.c
++++ b/runtime/src/autocompile.c
+@@ -6,0 +7,16 @@
++#if defined(PSX_UWP)
++#include <stdio.h>
++void autocompile_configure(const char *cmd, const char *cwd) { (void)cmd; (void)cwd; }
++void autocompile_set_cache_paths(const char *cache_dir, const char *captures) { (void)cache_dir; (void)captures; }
++int autocompile_configured(void) { return 0; }
++int autocompile_toolchain_available(void) { return 0; }
++int autocompile_busy(void) { return 0; }
++int autocompile_request(void) { return 0; }
++void autocompile_poll_main(void) {}
++void autocompile_shutdown(void) {}
++int autocompile_status_json(char *out, int cap) {
++    return cap > 0 ? snprintf(out, (size_t)cap, "{\"state\":\"static-uwp\"}") : 0;
++}
++const char *autocompile_degraded_reason(void) { return NULL; }
++#else
++
+@@ -1234,0 +1251 @@ int autocompile_status_json(char *out, int cap) {
++#endif
+diff --git a/runtime/src/crash_trace.c b/runtime/src/crash_trace.c
+index 0fe0d272..69ef0456 100644
+--- a/runtime/src/crash_trace.c
++++ b/runtime/src/crash_trace.c
+@@ -55,0 +56,3 @@ static const char *kReportPath = "psx_last_run_report.json";
++#if defined(PSX_UWP)
++static const char *kBuildId = PSX_BUILD_REV;
++#else
+@@ -56,0 +60 @@ static const char *kBuildId = PSX_BUILD_REV " (" __DATE__ " " __TIME__ ")";
++#endif
+@@ -922 +926 @@ void psx_crash_trace_install_handlers(void) {
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+diff --git a/runtime/src/freeze_heartbeat.c b/runtime/src/freeze_heartbeat.c
+index 3df0fa5f..4a5736b8 100644
+--- a/runtime/src/freeze_heartbeat.c
++++ b/runtime/src/freeze_heartbeat.c
+@@ -14 +14 @@
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+@@ -16,0 +17,2 @@
++#elif defined(_WIN32)
++#include <windows.h>
+@@ -173 +175 @@ static uint32_t s_last_wedge_kind = 0;  /* informational, last detected kind */
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+@@ -307,0 +310,8 @@ static void freeze_dump_main_stack_samples_json(FILE *f, int n) {
++#elif defined(PSX_UWP)
++static void freeze_dump_main_stack_json(FILE *f) {
++    if (f) fputs("[]", f);
++}
++static void freeze_dump_main_stack_samples_json(FILE *f, int n) {
++    (void)n;
++    if (f) fputs("[]", f);
++}
+diff --git a/runtime/src/gpu_gl_renderer.c b/runtime/src/gpu_gl_renderer.c
+index 3312551e..55e7de20 100644
+--- a/runtime/src/gpu_gl_renderer.c
++++ b/runtime/src/gpu_gl_renderer.c
+@@ -76,0 +77,3 @@
++#if defined(PSX_UWP)
++extern int psx_uwp_settings_overlay_image(const uint32_t **pixels, int *width, int *height);
++#endif
+@@ -3834 +3837 @@ void gl_renderer_set_interpolation(int enabled, double host_hz, double target_hz
+-                  effective_hz >= source_hz && effective_hz <= 1000.0) ? 1 : 0;
++                  effective_hz > source_hz * 1.05 && effective_hz <= 1000.0) ? 1 : 0;
+@@ -4112,0 +4116,4 @@ static void gl_swap_with_osd(void) {
++#if defined(PSX_UWP)
++            if (psx_uwp_settings_overlay_image(&px, &ow, &oh) && px)
++                gl_draw_osd_image(px, ow, oh, ww, wh, 0, 0, ww, wh);
++#endif
+diff --git a/runtime/src/host_osd.c b/runtime/src/host_osd.c
+index 62c387d0..e2b15ab8 100644
+--- a/runtime/src/host_osd.c
++++ b/runtime/src/host_osd.c
+@@ -12,0 +13,3 @@
++#if defined(PSX_UWP)
++extern int psx_uwp_settings_overlay_image(const uint32_t **pixels, int *width, int *height);
++#endif
+@@ -171,0 +175,5 @@ static int          s_sdl_ssm_th;
++#if defined(PSX_UWP)
++static SDL_Texture *s_sdl_uwp_settings_tex;
++static int          s_sdl_uwp_settings_tw;
++static int          s_sdl_uwp_settings_th;
++#endif
+@@ -514,0 +523,9 @@ void host_osd_draw_sdl(struct SDL_Renderer *renderer) {
++#if defined(PSX_UWP)
++        if (psx_uwp_settings_overlay_image(&px, &w, &h) && px) {
++            int lw = 640, lh = 480;
++            sdl_logical_size(renderer, &lw, &lh);
++            sdl_blit_argb(renderer, &s_sdl_uwp_settings_tex,
++                          &s_sdl_uwp_settings_tw, &s_sdl_uwp_settings_th,
++                          px, w, h, 0, 0, lw, lh);
++        }
++#endif
+diff --git a/runtime/src/main.cpp b/runtime/src/main.cpp
+index f1380ff6..3db8ac47 100644
+--- a/runtime/src/main.cpp
++++ b/runtime/src/main.cpp
+@@ -85,0 +86,5 @@ extern "C" void psx_event_step_conservative_env_init(void);
++#if defined(PSX_UWP)
++#include "recomp_runtime_ui.h"
++extern "C" void psx_uwp_save_graphics_settings(int, int, int);
++extern "C" void recomp_runtime_ui_enter_section(RecompRuntimeUi *, size_t);
++#endif
+@@ -1256,0 +1262,3 @@ static int           g_frame_interpolation_blend =
++#if defined(PSX_UWP)
++    PSX_MOD_FRAME_INTERPOLATION_MOTION_ADAPTIVE;
++#else
+@@ -1257,0 +1266 @@ static int           g_frame_interpolation_blend =
++#endif
+@@ -1258,0 +1268,3 @@ static int           g_frame_interpolation_blend_default =
++#if defined(PSX_UWP)
++    PSX_MOD_FRAME_INTERPOLATION_MOTION_ADAPTIVE;
++#else
+@@ -1259,0 +1272 @@ static int           g_frame_interpolation_blend_default =
++#endif
+@@ -2125,0 +2139,3 @@ static std::filesystem::path find_upward(std::filesystem::path start,
++#if defined(PSX_UWP)
++extern "C" const char* psx_uwp_data_path(void);
++#endif
+@@ -2127,0 +2144,3 @@ static std::filesystem::path exe_dir_from_argv(const char* argv0) {
++#if defined(PSX_UWP)
++    return fs::u8path(psx_uwp_data_path());
++#endif
+@@ -2201 +2220 @@ static void launcher_warning(const char* title, const std::string& msg) {
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+@@ -2210 +2229 @@ static void launcher_info(const char* title, const std::string& msg) {
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+@@ -2230 +2249 @@ static bool pick_runtime_file(const char* title, const char* filter,
+-#ifdef _WIN32
++#if defined(_WIN32) && !defined(PSX_UWP)
+@@ -2867,0 +2887,3 @@ static void refresh_host_display_cadence(int force_log, int force_probe) {
++#if defined(PSX_UWP)
++    if (host_hz <= 0.0) host_hz = 60.0;
++#endif
+@@ -2927,0 +2950,9 @@ static int host_driver_vsync_unreliable(void) {
++static int frame_interpolation_has_refresh_headroom(void) {
++    if (!g_frame_interpolation) return 0;
++    const double source_hz = g_frame_period_ms > 0.0
++        ? 1000.0 / g_frame_period_ms : 59.94;
++    const double target_hz = g_frame_interpolation_fps > 0
++        ? (double)g_frame_interpolation_fps : g_host_refresh_hz;
++    return target_hz > source_hz * 1.05;
++}
++
+@@ -2935 +2966 @@ static int present_vsync_owns_cadence(void) {
+-    if (g_frame_interpolation)
++    if (frame_interpolation_has_refresh_headroom())
+@@ -2951 +2982 @@ static int present_effective_swap_interval(void) {
+-    if (g_frame_interpolation)
++    if (frame_interpolation_has_refresh_headroom())
+@@ -2997,0 +3029,87 @@ static void apply_present_cadence(void) {
++#if defined(PSX_UWP)
++static RecompRuntimeUi *g_uwp_settings_ui;
++static std::array<uint32_t, 640 * 480> g_uwp_settings_pixels{};
++static constexpr const char *kUwpAaKey = "graphics.antialiasing";
++static constexpr const char *kUwpWideKey = "graphics.widescreen";
++
++static int uwp_settings_get(void *, const RecompRuntimeUiItem *setting, int *output_value) {
++    if (!setting || !output_value || !setting->key) return 0;
++    if (!std::strcmp(setting->key, RECOMP_RUNTIME_UI_KEY_RESOLUTION_SCALE))
++        *output_value = g_video_scale;
++    else if (!std::strcmp(setting->key, kUwpAaKey)) *output_value = g_video_aa ? 1 : 0;
++    else if (!std::strcmp(setting->key, kUwpWideKey))
++        *output_value = (g_video_aspect_num * 3 != g_video_aspect_den * 4) ? 1 : 0;
++    else return 0;
++    return 1;
++}
++
++static int uwp_settings_set(void *, const RecompRuntimeUiItem *setting, int new_value) {
++    if (!setting || !setting->key) return 0;
++    if (!std::strcmp(setting->key, RECOMP_RUNTIME_UI_KEY_RESOLUTION_SCALE)) {
++        g_video_scale = std::clamp(new_value, 1, 4);
++        gr_set_scale(g_video_scale);
++    } else if (!std::strcmp(setting->key, kUwpAaKey)) {
++        g_video_aa = new_value != 0;
++    } else if (!std::strcmp(setting->key, kUwpWideKey)) {
++        psx_mod_set_fixed_display_aspect(new_value ? 16u : 4u, new_value ? 9u : 3u);
++        gl_renderer_set_display_aspect(g_video_aspect_num, g_video_aspect_den);
++        if (sdl_renderer) {
++            g_logical_w = 480 * g_video_aspect_num * g_video_scale / g_video_aspect_den;
++            SDL_RenderSetLogicalSize(sdl_renderer, g_logical_w, 480 * g_video_scale);
++        }
++        g_ws_projection_mode = -1;
++        refresh_widescreen_projection();
++    } else return 0;
++    return 1;
++}
++
++static int uwp_settings_action(void *, const RecompRuntimeUiItem *setting) {
++    if (setting && setting->key && !std::strcmp(setting->key, RECOMP_RUNTIME_UI_KEY_RESUME)) {
++        recomp_runtime_ui_close(g_uwp_settings_ui);
++        return 1;
++    }
++    return 0;
++}
++
++static void uwp_settings_save(void *) {
++    psx_uwp_save_graphics_settings(
++        g_video_scale, g_video_aa ? 1 : 0,
++        (g_video_aspect_num * 3 != g_video_aspect_den * 4) ? 1 : 0);
++}
++
++static void uwp_settings_ensure(void) {
++    if (g_uwp_settings_ui) return;
++    static const RecompRuntimeUiItem settings_items[] = {
++        { RECOMP_RUNTIME_UI_KEY_RESOLUTION_SCALE, "Display", "Internal resolution", "Higher values sharpen 3D graphics; applies next launch.", RECOMP_RUNTIME_UI_INT, 1, 4, 1, nullptr, 0, nullptr },
++        { kUwpAaKey, "Display", "Image smoothing", "Smooth the final game image.", RECOMP_RUNTIME_UI_BOOL, 0, 1, 1, nullptr, 0, nullptr },
++        { kUwpWideKey, "Display", "16:9 widescreen", "Expand the rendered playfield for widescreen TVs.", RECOMP_RUNTIME_UI_BOOL, 0, 1, 1, nullptr, 0, nullptr },
++        { RECOMP_RUNTIME_UI_KEY_RESUME, "Display", "Resume game", "Return to Mega Man X4.", RECOMP_RUNTIME_UI_ACTION, 0, 0, 0, nullptr, 0, nullptr },
++    };
++    RecompRuntimeUiConfig config{};
++    config.title = "MEGA MAN X4 SETTINGS";
++    config.subtitle = "MENU + VIEW TO CLOSE";
++    config.items = settings_items;
++    config.item_count = sizeof(settings_items) / sizeof(settings_items[0]);
++    config.theme = "psx";
++    config.accept_label = "A SELECT";
++    config.back_label = "B CLOSE";
++    config.callbacks.get_value = uwp_settings_get;
++    config.callbacks.set_value = uwp_settings_set;
++    config.callbacks.run_action = uwp_settings_action;
++    config.callbacks.save = uwp_settings_save;
++    g_uwp_settings_ui = recomp_runtime_ui_create(&config);
++}
++
++extern "C" int psx_uwp_settings_overlay_image(const uint32_t **pixels,
++                                                int *width, int *height) {
++    if (!g_uwp_settings_ui || !recomp_runtime_ui_is_open(g_uwp_settings_ui)) return 0;
++    std::fill(g_uwp_settings_pixels.begin(), g_uwp_settings_pixels.end(), 0xff000000u);
++    recomp_runtime_ui_render_argb8888(g_uwp_settings_ui,
++        g_uwp_settings_pixels.data(), 640, 480, 640 * 4);
++    if (pixels) *pixels = g_uwp_settings_pixels.data();
++    if (width) *width = 640;
++    if (height) *height = 480;
++    return 1;
++}
++#endif
++
+@@ -6300,0 +6419,88 @@ static void rewind_pause_present(void) {
++#if defined(PSX_UWP)
++static int uwp_settings_combo_down(void) {
++    SDL_GameController *controller = g_players[0].handle;
++    return controller &&
++        SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK) &&
++        SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START);
++}
++
++static void uwp_settings_poll_toggle_buttons(void) {
++    static int was_down;
++    const int down = uwp_settings_combo_down();
++    if (down && !was_down && !savestate_menu_open && !psx_rewind_is_open()) {
++        uwp_settings_ensure();
++        if (g_uwp_settings_ui) {
++            recomp_runtime_ui_open(g_uwp_settings_ui);
++            recomp_runtime_ui_enter_section(g_uwp_settings_ui, 0);
++        }
++    }
++    was_down = down;
++}
++
++static void uwp_settings_host_pause_loop(void) {
++    int previous[5] = {};
++    uint32_t repeated_at[4] = {};
++    int combo_armed = 0;
++    gl_renderer_set_interpolation_suspended(1);
++    while (g_uwp_settings_ui && recomp_runtime_ui_is_open(g_uwp_settings_ui)) {
++        SDL_Event event;
++        while (SDL_PollEvent(&event)) {
++            if (event.type == SDL_QUIT) {
++                psx_crash_trace_set_exit_origin("sdl_window_close");
++                shutdown_runtime();
++                std::exit(0);
++            }
++        }
++        SDL_GameControllerUpdate();
++        SDL_GameController *controller = g_players[0].handle;
++        const int combo_down = uwp_settings_combo_down();
++        if (!combo_down) combo_armed = 1;
++        if (combo_down && combo_armed) {
++            recomp_runtime_ui_close(g_uwp_settings_ui);
++            break;
++        }
++
++        int current[5] = {};
++        if (controller) {
++            const Sint16 left_x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
++            const Sint16 left_y = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
++            const int dead_zone = 16000;
++            current[0] = SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP) ||
++                left_y < -dead_zone;
++            current[1] = SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN) ||
++                left_y > dead_zone;
++            current[2] = SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT) ||
++                left_x < -dead_zone;
++            current[3] = SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) ||
++                left_x > dead_zone;
++            current[4] = SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A);
++            if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B)) {
++                recomp_runtime_ui_close(g_uwp_settings_ui);
++                break;
++            }
++        }
++        const uint32_t ticks = (uint32_t)SDL_GetTicks();
++        const RecompRuntimeUiInput inputs[5] = {
++            RECOMP_RUNTIME_UI_INPUT_UP, RECOMP_RUNTIME_UI_INPUT_DOWN,
++            RECOMP_RUNTIME_UI_INPUT_LEFT, RECOMP_RUNTIME_UI_INPUT_RIGHT,
++            RECOMP_RUNTIME_UI_INPUT_ACCEPT
++        };
++        for (int index = 0; index < 5; ++index) {
++            const int edge = current[index] && !previous[index];
++            const int repeat = index < 4 && current[index] && previous[index] &&
++                (int32_t)(ticks - repeated_at[index]) >= 170;
++            if (edge || repeat) {
++                recomp_runtime_ui_handle_input(g_uwp_settings_ui, inputs[index], 1, repeat);
++                repeated_at[index] = ticks;
++            }
++            previous[index] = current[index];
++        }
++        rewind_pause_present();
++        starvation_watchdog_heartbeat();
++        SDL_Delay(8);
++    }
++    gl_renderer_set_interpolation_suspended(0);
++    savestate_input_guard_arm();
++}
++#endif
++
+@@ -6665,0 +6872,3 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
++#if defined(PSX_UWP)
++        uwp_settings_poll_toggle_buttons();
++#endif
+@@ -6671,0 +6881,4 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
++#if defined(PSX_UWP)
++        if (g_uwp_settings_ui && recomp_runtime_ui_is_open(g_uwp_settings_ui))
++            uwp_settings_host_pause_loop();
++#endif
+diff --git a/runtime/src/mod_runtime.cpp b/runtime/src/mod_runtime.cpp
+index 3f8b5765..74678ae5 100644
+--- a/runtime/src/mod_runtime.cpp
++++ b/runtime/src/mod_runtime.cpp
+@@ -1170 +1170,14 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path, std::string* err
+-        if (!sha256_file(disc_path, digest, &hash_error)) digest.clear();
++        if (!sha256_file(disc_path, digest, &hash_error)) {
++#if defined(PSX_UWP)
++            const char* verified = std::getenv("PSX_UWP_DISC_SHA256");
++            if (verified && std::strlen(verified) == 64u) {
++                digest = verified;
++                std::fprintf(stderr,
++                    "psxrecomp: using launcher-verified UWP disc SHA-256\n");
++            } else {
++                digest.clear();
++            }
++#else
++            digest.clear();
++#endif
++        }
+diff --git a/runtime/src/overlay_loader.c b/runtime/src/overlay_loader.c
+index a2b32480..c21ebb62 100644
+--- a/runtime/src/overlay_loader.c
++++ b/runtime/src/overlay_loader.c
+@@ -28,0 +29,5 @@ extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
++#if defined(PSX_UWP)
++extern HANDLE WINAPI CreateFileA(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES,
++                                 DWORD, DWORD, HANDLE);
++#endif
++
+diff --git a/runtime/src/overlay_path_canon.c b/runtime/src/overlay_path_canon.c
+index 94853837..90817a71 100644
+--- a/runtime/src/overlay_path_canon.c
++++ b/runtime/src/overlay_path_canon.c
+@@ -10,0 +11,5 @@
++#if defined(PSX_UWP)
++extern HANDLE WINAPI CreateFileA(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES,
++                                 DWORD, DWORD, HANDLE);
++#endif
++
+diff --git a/runtime/src/psx_fiber.c b/runtime/src/psx_fiber.c
+index a379eca0..2a30d95a 100644
+--- a/runtime/src/psx_fiber.c
++++ b/runtime/src/psx_fiber.c
+@@ -20 +20 @@ psx_fiber_t psx_fiber_convert_thread(void)
+-    void* fib = ConvertThreadToFiber(NULL);
++    void* fib = ConvertThreadToFiberEx(NULL, 0);
+@@ -30,2 +30,2 @@ psx_fiber_t psx_fiber_create(size_t stack_size, psx_fiber_entry entry, void* arg
+-    return (psx_fiber_t)CreateFiber((SIZE_T)stack_size,
+-                                    (LPFIBER_START_ROUTINE)entry, arg);
++    return (psx_fiber_t)CreateFiberEx((SIZE_T)stack_size, (SIZE_T)stack_size, 0,
++                                      (LPFIBER_START_ROUTINE)entry, arg);

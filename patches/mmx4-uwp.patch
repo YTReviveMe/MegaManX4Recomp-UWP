@@ -1,0 +1,6 @@
+diff --git a/game.toml b/game.toml
+index 8002178..c8892df 100644
+--- a/game.toml
++++ b/game.toml
+@@ -150,0 +151 @@ lock_mode      = true
++p1_device      = "auto"
