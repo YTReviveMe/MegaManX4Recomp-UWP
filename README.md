@@ -35,7 +35,7 @@ See [LICENSE](LICENSE). Mega Man X4 is copyright Capcom. No retail game data is 
 
 - [Matthew Stanley (mstan)](https://github.com/mstan) for MegaManX4Recomp, psxrecomp, and recomp-ui.
 - [Daniel Worley (worleydl)](https://github.com/worleydl) for the UWP dependency packages and libuwp.
-- [mesa-uwp](https://github.com/aerisarn/mesa-uwp) and the Mesa contributors for OpenGL support on UWP.
+- [aerisarn](https://github.com/aerisarn/mesa-uwp) for OpenGL support on UWP.
 - [SDL](https://github.com/libsdl-org/SDL) contributors for SDL2.
 - [Dear ImGui](https://github.com/ocornut/imgui) and its contributors.
 - [PCSX-Redux](https://github.com/grumpycoders/pcsx-redux) for OpenBIOS.
